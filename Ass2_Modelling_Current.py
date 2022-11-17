@@ -42,8 +42,8 @@ combined_actual = combined.iloc[:,28:]
 
 ### Observations in Bins
 
-bins = [0,0.5,1.5,2.5,3.5,4,np.inf]
-labels = ['0','1','2','3','4','5+']
+bins = [0,0.5,1.5,2.5,3,np.inf]
+labels = ['0','1','2','3','4+']
 
 for col in combined_actual.columns:
     combined_actual[col] = pd.cut(combined_actual[col], bins = bins, labels = labels, include_lowest = True)
@@ -208,7 +208,7 @@ for room in room_sensors:
     
     # Setting up factor lists for markov network
     factor_list = model.factors
-    factor_list[room].table = start_states[room]
+    # factor_list[room].table = start_states[room]
     transition = factor_list[room+'_next']
     
     # Remove room, room_next from emission dict
@@ -219,8 +219,6 @@ for room in room_sensors:
     # Set the model with factors - I think I want custom starting states rather than the learnt ones, update when this is working.
     model = HiddenMarkovModel(start_state = factor_list[room], transition = transition, emission= emissions, variable_remap = variable_remap, outcomeSpace = outcomeSpace)
     room_models[room] = model
-
-
 
 # Testing
 

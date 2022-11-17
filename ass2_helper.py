@@ -61,6 +61,7 @@ def return_room_lights():
 
 def return_start_states():
     start_states = {}
+    # for the [0,1,2,3,4,5+] bins
     start_states['r1'] = np.array([0.99,0.01,0,0,0,0])
     start_states['r2'] = np.array([0.98,0.01,0.01,0,0,0])
     start_states['r3'] = np.array([0,0,0,0,0,1])
@@ -71,5 +72,15 @@ def return_start_states():
     start_states['r8'] = np.array([0.99,0.01,0,0,0,0])
     start_states['r9'] = np.array([0.99,0.01,0,0,0,0])
     start_states['r10'] = np.array([0.95,0.01,0.01,0.01,0.01,0.01])
-
+    # for the [0,1,2,3,4+] bins
+    start_states['r1'] = np.array([0.99,0.01,0,0,0])
+    start_states['r2'] = np.array([0.98,0.01,0.01,0,0])
+    start_states['r3'] = np.array([0,0,0,0,1])
+    start_states['r4'] = np.array([0.9,0.04,0.02,0.02,0.02])
+    start_states['r5'] = np.array([0.94,0.03,0.01,0.01,0.01])
+    start_states['r6'] = np.array([0.96,0.02,0.01,0.01,0])
+    start_states['r7'] = np.array([0.96,0.02,0.01,0.01,0])
+    start_states['r8'] = np.array([0.99,0.01,0,0,0])
+    start_states['r9'] = np.array([0.99,0.01,0,0,0])
+    start_states['r10'] = np.array([0.95,0.02,0.01,0.01,0.01])
     return start_states
