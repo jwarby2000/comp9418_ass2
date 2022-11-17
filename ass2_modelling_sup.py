@@ -20,7 +20,7 @@ from Graph_Ass2 import Graph
 from BayesNet_Ass2 import BayesNet, allEqualThisIndex, NaiveBayes, HiddenMarkovModel
 
 
-def learn_outcome_space(sensors, labels, room, extras = None):
+def learn_outcome_space(sensors, labels, room, next_ = True, extras = None):
     outcomeSpace = {}
     labels = tuple(labels)
     
@@ -31,16 +31,20 @@ def learn_outcome_space(sensors, labels, room, extras = None):
             outcomeSpace[sensor] = labels
         
     outcomeSpace[room] = labels
-    outcomeSpace[room+'_next'] = labels
+    if next_:
+        outcomeSpace[room+'_next'] = labels
+    else:
+        outcomeSpace[room+'_prev'] = labels
     outcomeSpace[room+'_rob1'] = labels
     outcomeSpace[room+'_rob2'] = labels
-    for extra in extras:
-        outcomeSpace[extra] = labels
+    if extras is not None:
+        for extra in extras:
+            outcomeSpace[extra] = labels
     
     return outcomeSpace
 
 
-def assess_cost(model, dataframe, class_var, model_type='naive', p = 0.5):
+def assess_cost(model, dataframe, class_var, model_type='naive', p = 0.5, print_evi = False, debug = False):
     """
     Parameters
     ----------
@@ -73,6 +77,9 @@ def assess_cost(model, dataframe, class_var, model_type='naive', p = 0.5):
     for i in range(len(Y)):
         evidence = X[i]
         
+        if print_evi:
+            print(evidence)
+        
         # Checking for missing values
         
         missing = []
@@ -93,8 +100,11 @@ def assess_cost(model, dataframe, class_var, model_type='naive', p = 0.5):
             empty_prob = model.forward(missing = missing, class_var = class_var, **evidence)
             
         elif model_type == 'hidden_extra':
+            if debug:
+                empty_prob = model.forward_extra(missing = missing, class_var = class_var, debug = True, sleep = False, **evidence)
+            else:
+                empty_prob = model.forward_extra(missing = missing, class_var = class_var, **evidence)
             
-            empty_prob = model.forward_extra(missing = missing, class_var = class_var, **evidence)
         
         else:
             
@@ -108,8 +118,11 @@ def assess_cost(model, dataframe, class_var, model_type='naive', p = 0.5):
         else: # Turn on light
             cost = 0.01
             cost_vector[i]= cost
-            
-        prediction_vector.append(empty_prob)
+        
+        if print_evi:
+            print('Actual: ', Y.iloc[i])
+        
+        prediction_vector[i] = empty_prob
             
     return cost_vector, prediction_vector # Will extend to probability soon
 
@@ -134,3 +147,38 @@ def learn_naive_bayes_structure(dataframe, class_var):
     G = Graph(graph)
             
     return G
+
+def threshold_test(pred_vec, actual_vec, p):
+    """
+    Parameters
+    ----------
+    pred_vec : List
+        DESCRIPTION.
+    actual_vec : numpy array
+        DESCRIPTION.
+    p : float
+        DESCRIPTION.
+
+    Returns
+    -------
+    total_cost : TYPE
+        DESCRIPTION.
+
+    """
+    
+    assert len(pred_vec) == len(actual_vec)
+    
+    cost_vec = [0]*len(pred_vec)
+    
+    for i in range(len(pred_vec)):
+        if pred_vec[i] > p: # Turn off light
+            cost = 0.04*actual_vec[i]
+            cost_vec[i] = cost
+        else: # Turn on light
+            cost = 0.01
+            cost_vec[i]= cost
+        
+    return cost_vec
+
+
+

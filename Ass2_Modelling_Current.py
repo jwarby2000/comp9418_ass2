@@ -24,7 +24,7 @@ import time
 from DiscreteFactors_Ass2 import Factor
 from Graph_Ass2 import Graph
 from BayesNet_Ass2 import BayesNet, allEqualThisIndex, NaiveBayes, HiddenMarkovModel
-from ass2_modelling_sup import learn_outcome_space, assess_cost, learn_naive_bayes_structure
+from ass2_modelling_sup import learn_outcome_space, assess_cost, learn_naive_bayes_structure, threshold_test
 from ass2_helper import return_rooms, return_room_index, return_room_sensors, return_room_lights
 
 # Data
@@ -42,8 +42,20 @@ combined_actual = combined.iloc[:,28:]
 
 ### Observations in Bins
 
-bins = [0,0.5,4,np.inf]
-labels = ['0','1-4','5+']
+
+#bins = [0,0.5,2.5,4.5,np.inf]
+#labels = ['0','1-2','3-4','5+']
+
+
+bins = [0,0.5,1.5,2.5,3.5,4.5,np.inf]
+labels = ['0','1','2','3','4','5+']
+
+#bins = [0,0.5,1.5,2.5,3.5,4.5,5.5,6.5,7.5,np.inf]
+#labels = ['0','1','2','3','4','5','6','7','8+']
+
+
+#bins = [0,0.5,4,np.inf]
+#labels = ['0','1-4','5+']
 
 for col in combined_actual.columns:
     combined_actual[col] = pd.cut(combined_actual[col], bins = bins, labels = labels, include_lowest = True)
@@ -160,7 +172,7 @@ for room in room_sensors:
     
     # Training model
     outcomeSpace = learn_outcome_space(sensors = sensors, labels = labels, room = room) 
-    graph = learn_naive_bayes_structure(whole_data, room)
+    graph = learn_naive_bayes_structure(data, room)
     
     model = NaiveBayes(graph, outcomeSpace = outcomeSpace)
     model.learnParameters(whole_data, alpha = 1)
@@ -171,6 +183,7 @@ for room in room_sensors:
 # Testing for all rooms
 
 total_cost = 0
+pred_probs = []
 
 for room in room_sensors:
     
@@ -180,11 +193,22 @@ for room in room_sensors:
     data = pd.concat([test_sensors[sensors], test_actual[room], test_robot1[room+'_rob1'], test_robot2[room+'_rob2']], axis = 1)
     
     # Testing the model
-    cost_vec, pred_vec = assess_cost(model = room_models[room], dataframe = data, class_var = room, model_type = 'naive', p=0.8)
+    cost_vec, pred_vec = assess_cost(model = room_models[room], dataframe = data, class_var = room, model_type = 'naive', p=0.75)
     print(room, ' Successfully tested')
     total_cost += np.sum(cost_vec)
+    pred_probs.extend(pred_vec)
     
 print('Total Cost of Naive Bayes:', total_cost)
+
+
+room_list = return_rooms()
+room_list = room_list[:10]
+room_data = test_actual[room_list]
+room_data = room_data.values.flatten('F')
+cost_vec = threshold_test(pred_probs, room_data, p = 0.75)
+
+
+
 
 ### Hidden Markov - Current 
 
@@ -202,64 +226,6 @@ for room in room_sensors:
     outcomeSpace = learn_outcome_space(sensors = sensors, labels=labels, room=room) 
     graph = learn_naive_bayes_structure(data, room)
     model = NaiveBayes(graph, outcomeSpace = outcomeSpace)
-    model.learnParameters(whole_data, alpha = 1)
-    
-    # Setting up factor lists for markov network
-    factor_list = model.factors
-    transition = factor_list[room+'_next']
-    
-    # Remove room, room_next from emission dict
-    emissions = dict(factor_list)
-    del emissions[room]
-    del emissions[room+'_next']
-    
-    # Set the model with factors - I think I want custom starting states rather than the learnt ones, update when this is working.
-    model = HiddenMarkovModel(start_state = factor_list[room], transition = transition, emission= emissions, variable_remap = variable_remap, outcomeSpace = outcomeSpace)
-    room_models[room] = model
-
-
-
-# Testing
-
-total_cost = 0
-
-for room in room_sensors:
-    
-    print(room)
-    # Subsetting the data
-    sensors = room_sensors[room]
-    data = pd.concat([test_sensors[sensors], test_actual[room], test_robot1[room+'_rob1'], test_robot2[room+'_rob2']], axis = 1)
-    
-    # Testing the model
-    cost_vec, pred_vec = assess_cost(model = room_models[room], dataframe = data, class_var = room, model_type = 'hidden', p=0.8)
-    print(room, ' Successfully tested')
-    total_cost += np.sum(cost_vec)
-
-
-
-
-
-### Hidden Markov Model - Messing Around
-
-# Training
-
-room_models = {}
-
-for room in room_sensors:
-
-    # Subsetting the data, adding column for room_next
-    sensors = room_sensors[room]
-    variable_remap = {room+'_next':room}
-    data = pd.concat([train_sensors[sensors], train_actual[room].rename(room+'_next'), train_actual[room].shift(1), train_robot1[room+'_rob1'], train_robot2[room+'_rob2']], axis = 1)[1:] # For learning outcome space
-
-    # Learning Factors through NaiveBayes class 
-    outcomeSpace = learn_outcome_space(sensors = sensors, labels=labels, room=room) 
-    graph = learn_naive_bayes_structure(data, room+'_next')
-    graph.remove_node(room)
-    graph.add_edge(room,room+'_next')
-    
-
-    model = NaiveBayes(graph, outcomeSpace = outcomeSpace)
     model.learnParameters(data, alpha = 1)
     
     # Setting up factor lists for markov network
@@ -280,6 +246,7 @@ for room in room_sensors:
 # Testing
 
 total_cost = 0
+pred_probs = []
 
 for room in room_sensors:
     
@@ -289,12 +256,10 @@ for room in room_sensors:
     data = pd.concat([test_sensors[sensors], test_actual[room], test_robot1[room+'_rob1'], test_robot2[room+'_rob2']], axis = 1)
     
     # Testing the model
-    cost_vec, pred_vec = assess_cost(model = room_models[room], dataframe = data, class_var = room, p=0.8, print_data = True, wait_time = True)
+    cost_vec, pred_vec = assess_cost(model = room_models[room], dataframe = data, class_var = room, model_type = 'hidden', p=0.75, print_evi = True)
     print(room, ' Successfully tested')
     total_cost += np.sum(cost_vec)
-
-
-
+    pred_probs.extend(pred_vec)
 
 ### Hidden Markov with Door dependency - Currently scuffed 
 
@@ -309,61 +274,40 @@ for room in room_sensors:
     # Subsetting the data, adding column for room_next
     sensors = room_sensors[room]
     door_sensors = []
-    door_next = []
-    door_map = {}
     for sensor in sensors:
         if 'door_sensor' in sensor:
             door_sensors.append(sensor)
-            door_next.append(sensor+'_next')
-            door_map[sensor] = sensor+'_next'
             
-            
-            
-    variable_remap = {room+'_next':room}
-    data = pd.concat([train_sensors[sensors], train_sensors[door_sensors].shift(-1).rename(columns = door_map), train_actual[room], train_actual[room].shift(-1).rename(room+'_next'), train_robot1[room+'_rob1'], train_robot2[room+'_rob2']], axis = 1)[:-1]
-    whole_data = pd.concat([combined_sensors[sensors], combined_sensors[door_sensors].shift(-1).rename(columns = door_map), combined_actual[room], combined_actual[room].shift(-1).rename(room+'_next'), rob1[room+'_rob1'], rob2[room+'_rob2']], axis = 1)[:-1] # For learning outcome space
+    variable_remap = {room:room+'_prev'}
+    data = pd.concat([train_sensors[sensors], train_actual[room], train_actual[room].shift(1).rename(room+'_prev'), train_robot1[room+'_rob1'], train_robot2[room+'_rob2']], axis = 1)[1:]
+    whole_data = pd.concat([combined_sensors[sensors], combined_actual[room], combined_actual[room].shift(1).rename(room+'_prev'), rob1[room+'_rob1'], rob2[room+'_rob2']], axis = 1)[1:] # For learning outcome space
     # Learning Factors through NaiveBayes class 
-    outcomeSpace = learn_outcome_space(sensors=sensors, labels=labels, room=room, extras = door_next)
-    graph = learn_naive_bayes_structure(data.drop(columns = door_sensors), room)
+    outcomeSpace = learn_outcome_space(sensors=sensors, labels=labels, room=room, next_ = False)
+    graph = learn_naive_bayes_structure(data.drop(door_sensors+[room+'_prev'], axis = 1), room)
+    graph.add_edge(room+'_prev', room)
     for sensor in door_sensors:
-        graph.add_edge(sensor+'_next',room+'_next')
-    model = NaiveBayes(graph, outcomeSpace = outcomeSpace)
-    model.learnParameters(data, alpha = 1)
+        graph.add_edge(room+'_prev', sensor)
+        graph.add_edge(sensor,room)
+    model = BayesNet(graph, outcomeSpace = outcomeSpace)
+    model.learnParameters(data, alpha = 0.1)
 
     # Setting up factor lists for markov network
     factor_list = model.factors    
-    transition = factor_list[room+'_next']
-    domain = list(transition.domain)
-    for var in list(domain):
-        if 'door_sensor' in var:
-            domain.remove(var)
-            domain.append(var[:-5])
-    transition.domain = tuple(domain)
-    
-    
-    
-    transition_door = []
-    for i, sensor in enumerate(door_next):
-        factor = factor_list[sensor]
-        domain = list(factor.domain)
-        domain.remove(sensor)
-        domain.append(door_sensors[i])
-        factor.domain = tuple(domain)
-        transition_door.append(factor)
-    
+    transition = factor_list[room]
     
     # Remove room, room_next from emission dict
     emissions = dict(factor_list)
+    transition_door = []
     del emissions[room]
-    del emissions[room+'_next']
+    del emissions[room+'_prev']
     for sensor in sensors:
         if 'door_sensor' in sensor:
-            del emissions[sensor+"_next"]
-    
+            del emissions[sensor]
+            transition_door.append(factor_list[sensor])
     
     # Set the model with factors - I think I want custom starting states rather than the learnt ones, update when this is working.
     # TODO - Customise starting factors based on the inital spread of people in the office
-    model = HiddenMarkovModel(start_state = factor_list[room], transition = transition, emission= emissions, variable_remap = variable_remap, outcomeSpace = outcomeSpace, transition_extra = transition_door)
+    model = HiddenMarkovModel(start_state = factor_list[room+'_prev'], transition = transition, emission= emissions, variable_remap = variable_remap, outcomeSpace = outcomeSpace, transition_extra = transition_door)
     room_models[room] = model  
     
 total_cost = 0
@@ -377,7 +321,7 @@ for room in room_sensors:
     data = pd.concat([test_sensors[sensors], test_actual[room], test_robot1[room+'_rob1'], test_robot2[room+'_rob2']], axis = 1)[:-1]
     
     # Testing the model
-    cost_vec, pred_vec = assess_cost(model = room_models[room], dataframe = data, class_var = room, model_type = 'hidden_extra', p=0.8)
+    cost_vec, pred_vec = assess_cost(model = room_models[room], dataframe = data, class_var = room, model_type = 'hidden_extra', p=0.8, print_evi = True, debug = False)
     print(room, ' Successfully tested')
     total_cost += np.sum(cost_vec)    
     cost_vecs.append(cost_vec)
