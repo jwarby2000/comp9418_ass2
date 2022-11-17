@@ -184,6 +184,7 @@ for room in room_sensors:
 
 total_cost = 0
 pred_probs = []
+cost_naive = []
 
 for room in room_sensors:
     
@@ -197,6 +198,7 @@ for room in room_sensors:
     print(room, ' Successfully tested')
     total_cost += np.sum(cost_vec)
     pred_probs.extend(pred_vec)
+    cost_naive.append(sum(cost_vec))
     
 print('Total Cost of Naive Bayes:', total_cost)
 
@@ -247,6 +249,8 @@ for room in room_sensors:
 
 total_cost = 0
 pred_probs = []
+cost_hmm = []
+num_correct_hmm = []
 
 for room in room_sensors:
     
@@ -256,10 +260,12 @@ for room in room_sensors:
     data = pd.concat([test_sensors[sensors], test_actual[room], test_robot1[room+'_rob1'], test_robot2[room+'_rob2']], axis = 1)
     
     # Testing the model
-    cost_vec, pred_vec = assess_cost(model = room_models[room], dataframe = data, class_var = room, model_type = 'hidden', p=0.75, print_evi = True)
+    cost_vec, pred_vec, correct = assess_cost(model = room_models[room], dataframe = data, class_var = room, model_type = 'hidden', p=0.75, print_evi = True)
     print(room, ' Successfully tested')
     total_cost += np.sum(cost_vec)
     pred_probs.extend(pred_vec)
+    cost_hmm.append(sum(cost_vec))
+    num_correct_hmm.append(correct)
 
 ### Hidden Markov with Door dependency - Currently scuffed 
 
@@ -312,6 +318,8 @@ for room in room_sensors:
     
 total_cost = 0
 cost_vecs = []
+cost_hmm_door = []
+num_correct = []
 
 for room in room_sensors:
     
@@ -321,8 +329,59 @@ for room in room_sensors:
     data = pd.concat([test_sensors[sensors], test_actual[room], test_robot1[room+'_rob1'], test_robot2[room+'_rob2']], axis = 1)[:-1]
     
     # Testing the model
-    cost_vec, pred_vec = assess_cost(model = room_models[room], dataframe = data, class_var = room, model_type = 'hidden_extra', p=0.8, print_evi = True, debug = False)
+    cost_vec, pred_vec, correct = assess_cost(model = room_models[room], dataframe = data, class_var = room, model_type = 'hidden_extra', p=0.8, print_evi = True, debug = False)
     print(room, ' Successfully tested')
     total_cost += np.sum(cost_vec)    
     cost_vecs.append(cost_vec)
+    cost_hmm_door.append(sum(cost_vec))
+    num_correct.append(correct)
+# random shit ignore
+def room_empty(room_data):
     
+    empty = 0
+    
+    for i in range(len(room_data)):
+        if room_data.iloc[i] == 0:
+            empty += 1
+    
+    return empty/len(room_data)
+
+average_people = []
+
+for room in room_sensors:
+    average = np.mean(combined[room])
+    average_people.append(average)
+    
+empty_perc_list = []
+
+for room in room_sensors:
+    empty_percent = room_empty(combined[room])
+    empty_perc_list.append(empty_percent)
+    
+df1 = pd.DataFrame({'average_people': average_people, 'empty_perc': empty_perc_list, 'naive':cost_naive,'hmm':cost_hmm,'hmm_door':cost_hmm_door})
+df1['diff'] = df1['hmm'] - df1['hmm_door']
+df1['num_correct_hmm'] = num_correct_hmm
+df1['num_correct_hmm_door'] = num_correct
+df1
+
+
+
+# import sys
+# room = 'r4'
+# sys.stdout = open('output_normal.txt','wt', encoding="utf-8")
+# sensors = room_sensors[room]
+# data = pd.concat([test_sensors[sensors], test_actual[room], test_robot1[room+'_rob1'], test_robot2[room+'_rob2']], axis = 1)
+
+# # Testing the model
+# cost_vec, pred_vec = assess_cost(model = room_models[room], dataframe = data, class_var = room, model_type = 'hidden', p=0.75, print_evi = True)
+
+# # HMM with door
+# sys.stdout = open('output.txt','wt', encoding="utf-8")
+# data = pd.concat([test_sensors[sensors], test_actual[room], test_robot1[room+'_rob1'], test_robot2[room+'_rob2']], axis = 1)[:-1]
+
+# # Testing the model
+# cost_vec, pred_vec = assess_cost(model = room_models[room], dataframe = data, class_var = room, model_type = 'hidden_extra', p=0.8, print_evi = True, debug = False)
+
+
+
+

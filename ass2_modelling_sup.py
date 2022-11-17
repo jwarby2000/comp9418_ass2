@@ -73,6 +73,7 @@ def assess_cost(model, dataframe, class_var, model_type='naive', p = 0.5, print_
     
     prediction_vector = [0]*len(Y)
     cost_vector = [0]*len(Y) 
+    correct_count = 0
     
     for i in range(len(Y)):
         evidence = X[i]
@@ -115,6 +116,8 @@ def assess_cost(model, dataframe, class_var, model_type='naive', p = 0.5, print_
         if empty_prob > p: # Turn off light
             cost = 0.04*Y.iloc[i]
             cost_vector[i] = cost
+            if cost == 0:
+                correct_count += 1
         else: # Turn on light
             cost = 0.01
             cost_vector[i]= cost
@@ -124,7 +127,7 @@ def assess_cost(model, dataframe, class_var, model_type='naive', p = 0.5, print_
         
         prediction_vector[i] = empty_prob
             
-    return cost_vector, prediction_vector # Will extend to probability soon
+    return cost_vector, prediction_vector, correct_count # Will extend to probability soon
 
 def learn_naive_bayes_structure(dataframe, class_var):
     '''

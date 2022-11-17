@@ -479,8 +479,8 @@ class HiddenMarkovModel():
         # Setting evidence for transition - new in this implementation as transition includes door sensors
         transition_evi = transition_factor.evidence(**emission_evi)
         
-        #print('Before Transition', self.state)
-        #print('Transition Probabilities', transition_evi)
+        print('Before Transition', self.state)
+        print('Transition Probabilities', transition_evi)
         
         # join with transition factor
         f = self.state*transition_evi
@@ -493,7 +493,7 @@ class HiddenMarkovModel():
         f.domain = tuple(self.remap[var] for var in f.domain)
         self.state = f
 
-        #print('After Transition', self.state)
+        print('After Transition', self.state)
 
         # set emission evidence
         
@@ -502,7 +502,7 @@ class HiddenMarkovModel():
         for factor in emissions:
             emissionFactor = emissionFactor*factor.evidence(**emission_evi) 
         
-        #print('Emission Factor', emissionFactor)    
+        print('Emission Factor', emissionFactor)    
         
         # join with state factor
         f = self.state*emissionFactor
@@ -516,11 +516,11 @@ class HiddenMarkovModel():
         self.state = f
 
         # normalize state - was commented in original code but want to use it to get prob dist at each step
-        #print('Current Probabilities:')
+        print('Current Probabilities:')
         
         self.state = self.state.normalize()
         
-        #print(self.state)
+        print(self.state)
 
         index = self.state.outcomeSpace[class_var].index(value)
         
