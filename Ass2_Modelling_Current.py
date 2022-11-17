@@ -204,11 +204,11 @@ for room in room_sensors:
     outcomeSpace = learn_outcome_space(sensors = sensors, labels=labels, room=room) 
     graph = learn_naive_bayes_structure(data, room)
     model = NaiveBayes(graph, outcomeSpace = outcomeSpace)
-    model.learnParameters(whole_data, alpha = 1)
+    model.learnParameters(data, alpha = 1)
     
     # Setting up factor lists for markov network
     factor_list = model.factors
-    # factor_list[room].table = start_states[room]
+    factor_list[room].table = start_states[room]
     transition = factor_list[room+'_next']
     
     # Remove room, room_next from emission dict
