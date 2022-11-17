@@ -25,7 +25,7 @@ from DiscreteFactors_Ass2 import Factor
 from Graph_Ass2 import Graph
 from BayesNet_Ass2 import BayesNet, allEqualThisIndex, NaiveBayes, HiddenMarkovModel
 from ass2_modelling_sup import learn_outcome_space, assess_cost, learn_naive_bayes_structure
-from ass2_helper import return_rooms, return_room_index, return_room_sensors, return_room_lights
+from ass2_helper import return_rooms, return_room_index, return_room_sensors, return_room_lights, return_start_states
 
 # Data
 
@@ -42,8 +42,8 @@ combined_actual = combined.iloc[:,28:]
 
 ### Observations in Bins
 
-bins = [0,0.5,4,np.inf]
-labels = ['0','1-4','5+']
+bins = [0,0.5,1.5,2.5,3.5,4,np.inf]
+labels = ['0','1','2','3','4','5+']
 
 for col in combined_actual.columns:
     combined_actual[col] = pd.cut(combined_actual[col], bins = bins, labels = labels, include_lowest = True)
@@ -188,6 +188,8 @@ print('Total Cost of Naive Bayes:', total_cost)
 
 ### Hidden Markov - Current 
 
+# Starting factors
+start_states = return_start_states()
 room_models = {}
 
 for room in room_sensors:
@@ -206,6 +208,7 @@ for room in room_sensors:
     
     # Setting up factor lists for markov network
     factor_list = model.factors
+    factor_list[room].table = start_states[room]
     transition = factor_list[room+'_next']
     
     # Remove room, room_next from emission dict
@@ -235,8 +238,7 @@ for room in room_sensors:
     print(room, ' Successfully tested')
     total_cost += np.sum(cost_vec)
 
-
-
+print('Total Cost of Hidden Markov Model:', total_cost)
 
 
 ### Hidden Markov Model - Messing Around
@@ -272,10 +274,8 @@ for room in room_sensors:
     del emissions[room+'_next']
     
     # Set the model with factors - I think I want custom starting states rather than the learnt ones, update when this is working.
-    model = HiddenMarkovModel(start_state = factor_list[room], transition = transition, emission= emissions, variable_remap = variable_remap, outcomeSpace = outcomeSpace)
+    model = HiddenMarkovModel(start_state = start_states[room], transition = transition, emission= emissions, variable_remap = variable_remap, outcomeSpace = outcomeSpace)
     room_models[room] = model
-
-
 
 # Testing
 
@@ -289,7 +289,7 @@ for room in room_sensors:
     data = pd.concat([test_sensors[sensors], test_actual[room], test_robot1[room+'_rob1'], test_robot2[room+'_rob2']], axis = 1)
     
     # Testing the model
-    cost_vec, pred_vec = assess_cost(model = room_models[room], dataframe = data, class_var = room, p=0.8, print_data = True, wait_time = True)
+    cost_vec, pred_vec = assess_cost(model = room_models[room], dataframe = data, class_var = room, p=0.8, model_type = 'hidden')
     print(room, ' Successfully tested')
     total_cost += np.sum(cost_vec)
 
@@ -382,3 +382,5 @@ for room in room_sensors:
     total_cost += np.sum(cost_vec)    
     cost_vecs.append(cost_vec)
     
+    
+print('Total Cost of Special Hidden Markov Model:', total_cost)

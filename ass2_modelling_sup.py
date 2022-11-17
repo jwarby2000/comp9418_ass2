@@ -20,7 +20,7 @@ from Graph_Ass2 import Graph
 from BayesNet_Ass2 import BayesNet, allEqualThisIndex, NaiveBayes, HiddenMarkovModel
 
 
-def learn_outcome_space(sensors, labels, room, extras = None):
+def learn_outcome_space(sensors, labels, room, extras = []):
     outcomeSpace = {}
     labels = tuple(labels)
     
